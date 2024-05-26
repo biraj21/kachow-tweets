@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>kachow tweets</title>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      body {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      input,
+      textarea {
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid grey;
+      }
+
+      #form {
+        margin: 16px auto;
+      }
+
+      #form > div {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 16px;
+      }
+
+      #image-form__file-input-container {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 16px;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid grey;
+      }
+
+      #form > #image-preview {
+        width: 100%;
+        border-radius: 8px;
+        margin-bottom: 16px;
+      }
+
+      #image-form__submit-btn {
+        width: 100%;
+        border: 1px solid #000;
+        border-radius: 8px;
+        padding: 6px 12px;
+      }
+
+      #status {
+        text-align: center;
+        margin-top: 8px auto;
+      }
+
+      #result > h2 {
+        margin-bottom: 8px;
+      }
+
+      #result > fieldset {
+        border: none;
+      }
+
+      #result > fieldset > div {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 16px;
+      }
+
+      #result > fieldset > div > textarea {
+        padding: 4px;
+      }
+
+      footer {
+        text-align: center;
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>kachow tweets</h1>
+
+    <form id="form">
+      <div>
+        <label for="api-key-input">gemini api key (not stored):</label>
+        <input type="password" id="api-key-input" name="apiKey" required />
+      </div>
+
+      <div>
+        <label for="prompt-input">prompt for some context:</label>
+        <textarea id="prompt-input" name="prompt" rows="5" required>
+You are a witty social media manager for me.
+
+I am Biraj, and my Twitter handle is @not_salgaonkar. My Instagram page name is @kachow_tweets, where I post screenshots of my tweets and twitter interactions in general. I mostly roast people btw.</textarea
+        >
+      </div>
+
+      <div id="image-form__file-input-container">
+        <label for="image-input">image (png / jpg / jpeg):</label>
+        <input type="file" id="image-input" name="image" accept=".png,.jpg,.jpeg" required />
+      </div>
+
+      <img id="image-preview" src="#" style="display: none" />
+
+      <button type="submit" id="image-form__submit-btn">submit</button>
+    </form>
+
+    <p id="status"></p>
+
+    <section id="result">
+      <h2>result</h2>
+      <fieldset disabled>
+        <div>
+          <label>thoughts:</label>
+          <textarea id="result__thoughts" row="4"></textarea>
+        </div>
+
+        <div>
+          <label>caption:</label>
+          <textarea id="result__caption" rows="4"></textarea>
+        </div>
+
+        <div>
+          <label>hashtags:</label>
+          <textarea id="result__hashtags" rows="4"></textarea>
+        </div>
+      </fieldset>
+    </section>
+
+    <footer>powered by Google Gemini Pro Vision</footer>
+
+    <script>
+      const ALLOWED_MIME_TYPES = ["image/png", "image/jpg", "image/jpeg"];
+
+      const $form = document.getElementById("form");
+      const $status = document.getElementById("status");
+
+      const $rThoughts = document.getElementById("result__thoughts");
+      const $rCaption = document.getElementById("result__caption");
+      const $rHashtags = document.getElementById("result__hashtags");
+
+      const $imageInput = document.getElementById("image-input");
+      const $imagePreview = document.getElementById("image-preview");
+
+      $imageInput.addEventListener("change", (e) => {
+        const file = $imageInput.files[0];
+        if (!file) {
+          $imagePreview.style.display = "none";
+          return;
+        }
+
+        console.log("birajlog filetype", file);
+
+        if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+          return;
+        }
+
+        $imagePreview.src = URL.createObjectURL(file);
+        $imagePreview.style.display = "block";
+      });
+
+      let isSubmitting = false;
+
+      $form.addEventListener("submit", async (e) => {
+        try {
+          if (isSubmitting) {
+            return;
+          }
+
+          e.preventDefault();
+
+          isSubmitting = true;
+          $status.textContent = "generating...";
+
+          const res = await fetch("/generate", {
+            method: "POST",
+            body: new FormData($form),
+          });
+
+          const json = await res.json();
+
+          if (!res.ok) {
+            throw new Error(json.message);
+          }
+
+          $rThoughts.textContent = json.data.thoughts;
+          $rCaption.textContent = json.data.caption;
+          $rHashtags.textContent = json.data.hashtags;
+
+          $status.textContent = json.message || "success!";
+        } catch (err) {
+          console.error("error", err);
+          $status.textContent = err.message || "something went wrong";
+        } finally {
+          isSubmitting = false;
+        }
+      });
+    </script>
+  </body>
+</html>
